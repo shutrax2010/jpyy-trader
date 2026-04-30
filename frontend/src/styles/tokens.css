@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ── 背景 ─────────────────────────── */
+  --color-bg-page:        #FAFAF7;
+  --color-bg-card:        #FFFFFF;
+  --color-bg-accent:      #FFFBE6;
+  --color-border:         #E8E6DC;
+
+  /* ── テキスト ────────────────────── */
+  --color-text-primary:   #1A1A14;
+  --color-text-secondary: #8A8878;
+  --color-text-hint:      #B8B6A8;
+
+  /* ── アクセント ──────────────────── */
+  --color-yellow:         #F5C800;
+  --color-yellow-dark:    #C9A000;
+  --color-yellow-light:   #FFF3A8;
+
+  /* ── 売買ステータス ──────────────── */
+  --color-buy:            #1A9E6A;
+  --color-buy-bg:         #E8F8F2;
+  --color-sell:           #D94040;
+  --color-sell-bg:        #FAEAEA;
+  --color-hold:           #8A8878;
+  --color-hold-bg:        #F0EFE8;
+
+  /* ── AIモード ────────────────────── */
+  --color-aggressive:     #E85D24;
+  --color-aggressive-bg:  #FEF0E8;
+  --color-conservative:   #3B7DD8;
+  --color-conservative-bg:#E8F0FE;
+
+  /* ── 管理画面 ────────────────────── */
+  --admin-bg-page:        #1A1A14;
+  --admin-bg-sidebar:     #111108;
+  --admin-bg-card:        #242420;
+  --admin-border:         #3A3A34;
+  --admin-text-primary:   #E8E6DC;
+  --admin-text-secondary: #8A8878;
+  --admin-accent:         #9B7BE8;
+
+  /* ── フォント ────────────────────── */
+  --font-sans:    'DM Sans', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+
+  /* ── スペーシング・形状 ────────── */
+  --space-card:   24px;
+  --space-inner:  20px;
+  --radius-card:  12px;
+  --shadow-card:  0 2px 12px rgba(26, 26, 20, 0.06);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}

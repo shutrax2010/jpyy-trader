@@ -1,0 +1,21 @@
+node_modules/
+
+# 環境変数（各パッケージ内も含む）
+.env
+.env.local
+**/.env
+**/.env.local
+
+# ビルド成果物
+dist/
+.next/
+out/
+
+# Hardhat
+artifacts/
+cache/
+typechain-types/
+
+# その他
+.DS_Store
+*.log

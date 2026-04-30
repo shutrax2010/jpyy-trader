@@ -1,0 +1,15 @@
+{
+  "name": "jpyy-trader",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev":    "concurrently -n fe,be -c yellow,cyan \"pnpm -F @jpyy/frontend dev\" \"pnpm -F @jpyy/backend dev\"",
+    "dev:fe": "pnpm -F @jpyy/frontend dev",
+    "dev:be": "pnpm -F @jpyy/backend dev",
+    "build":  "pnpm -F @jpyy/shared build && pnpm -F @jpyy/backend build && pnpm -F @jpyy/frontend build",
+    "test":   "pnpm -F @jpyy/contract test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
