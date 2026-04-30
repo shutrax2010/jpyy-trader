@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { useEffect, useRef } from 'react';
 import { usePolling } from '@/hooks/usePolling';
 import { useAgent } from '@/hooks/useAgent';
 import { useWallet } from '@/hooks/useWallet';
@@ -16,8 +17,19 @@ import type { AgentMode } from '@/types';
 export default function TradeDashboard() {
   const wallet = useWallet();
   const { refetch } = usePolling();
-  const { start, stop, updateConfig } = useAgent();
+  const agent = useAgent();
   const { state, isLoading } = useTradingStore();
+
+  // ウォレット接続/切断をバックエンドに通知
+  const prevAddress = useRef<string | null>(null);
+  useEffect(() => {
+    if (wallet.address && wallet.address !== prevAddress.current) {
+      agent.connect(wallet.address).catch(() => {/* 接続通知失敗は無視 */});
+    } else if (!wallet.address && prevAddress.current) {
+      agent.disconnect().catch(() => {});
+    }
+    prevAddress.current = wallet.address;
+  }, [wallet.address]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!wallet.address) {
     return (
@@ -38,17 +50,17 @@ export default function TradeDashboard() {
   }
 
   async function handleStart() {
-    await start();
+    await agent.start();
     setTimeout(refetch, 300);
   }
 
   async function handleStop() {
-    await stop();
+    await agent.stop();
     setTimeout(refetch, 300);
   }
 
   async function handleConfigChange(mode: AgentMode, interval: number, tradeAmount: number) {
-    await updateConfig(mode, interval, tradeAmount);
+    await agent.updateConfig(mode, interval, tradeAmount);
   }
 
   return (
@@ -81,7 +93,7 @@ export default function TradeDashboard() {
               onConfigChange={handleConfigChange}
             />
             <HoldingsPanel
-              address={state.agent.address}
+              address={wallet.address}
               balances={state.balances}
               pool={state.pool}
               onRefresh={refetch}

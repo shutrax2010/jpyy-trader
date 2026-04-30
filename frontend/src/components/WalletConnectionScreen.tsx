@@ -17,14 +17,15 @@ export default function WalletConnectionScreen({ loading, error, onConnect }: Pr
         <div style={styles.network}>AMOY TESTNET</div>
 
         <p style={styles.description}>
-          AI エージェントによる JPYY/YTT 自律売買デモ
+          接続したウォレットが AIエージェントとして<br />
+          JPYY / YTT の売買を行います
         </p>
 
         <div style={styles.divider} />
 
-        {/* ユーザーウォレット接続 */}
+        {/* エージェントウォレット接続 */}
         <div style={styles.section}>
-          <p style={styles.sectionLabel}>ダッシュボードを閲覧する</p>
+          <p style={styles.sectionLabel}>エージェントウォレットを接続してください</p>
           <button
             style={{ ...styles.btn, opacity: loading ? 0.6 : 1 }}
             onClick={onConnect}
@@ -36,16 +37,14 @@ export default function WalletConnectionScreen({ loading, error, onConnect }: Pr
           {error && <p style={styles.error}>{error}</p>}
         </div>
 
+        <div style={styles.requirements}>
+          <p style={styles.req}>・Polygon Amoy Testnet への切り替えが必要です</p>
+          <p style={styles.req}>・JPYY 残高が必要です（管理者から配布）</p>
+        </div>
+
         <div style={styles.divider} />
 
-        {/* 管理者ウォレット */}
-        <div style={styles.section}>
-          <p style={styles.sectionLabel}>管理者として操作する</p>
-          <Link href="/admin" style={styles.adminBtn}>
-            管理ダッシュボードへ →
-          </Link>
-          <p style={styles.hint}>管理者ウォレット（owner）での接続が必要です</p>
-        </div>
+        <Link href="/admin" style={styles.adminLink}>管理ダッシュボードへ →</Link>
       </div>
     </div>
   );
@@ -159,26 +158,20 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--color-sell)',
     textAlign: 'center',
   },
-  adminBtn: {
-    display: 'block',
-    padding: '11px 0',
-    background: 'transparent',
-    color: 'var(--color-text-secondary)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    fontFamily: 'var(--font-sans)',
-    fontSize: 14,
-    fontWeight: 500,
-    cursor: 'pointer',
+  requirements: {
     width: '100%',
-    textAlign: 'center',
-    textDecoration: 'none',
-    transition: 'border-color 0.15s',
+    marginBottom: 20,
   },
-  hint: {
+  req: {
     fontFamily: 'var(--font-sans)',
     fontSize: 11,
     color: 'var(--color-text-hint)',
-    textAlign: 'center',
+    lineHeight: 1.9,
+  },
+  adminLink: {
+    fontFamily: 'var(--font-sans)',
+    fontSize: 12,
+    color: 'var(--color-text-hint)',
+    textDecoration: 'none',
   },
 };

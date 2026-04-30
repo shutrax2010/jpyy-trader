@@ -16,6 +16,12 @@ artifacts/
 cache/
 typechain-types/
 
+# Claude Code ローカル設定
+.claude/settings.local.json
+
+# TypeScript ビルド情報
+*.tsbuildinfo
+
 # その他
 .DS_Store
 *.log

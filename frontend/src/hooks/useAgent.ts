@@ -29,6 +29,8 @@ export function useAgent() {
   return {
     start:        () => post('/agent/start'),
     stop:         () => post('/agent/stop'),
+    connect:      (address: string) => post('/agent/connect', { address }),
+    disconnect:   () => post('/agent/disconnect'),
     updateConfig: (mode: AgentMode, interval: number, tradeAmount: number) =>
       patch('/agent/config', { mode, interval, tradeAmount }),
   };

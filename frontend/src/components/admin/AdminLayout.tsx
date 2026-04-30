@@ -1,8 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import type { ReactNode } from 'react';
-import { useWalletStore } from '@/store/walletStore';
-import { useAdminWallet } from '@/hooks/useAdminWallet';
 
 const NAV = [
   { href: '/admin', label: '概要' },
@@ -12,14 +10,9 @@ const NAV = [
   { href: '/admin/log', label: '操作ログ' },
 ];
 
-function short(addr: string) {
-  return addr.slice(0, 6) + '…' + addr.slice(-4);
-}
-
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { pathname } = useRouter();
-  const { user, connectUser, disconnectUser } = useWalletStore();
-  const adminWallet = useAdminWallet();
+  const adminAddress = process.env.NEXT_PUBLIC_ADMIN_ADDRESS;
 
   return (
     <div style={styles.layout}>
@@ -45,45 +38,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        {/* ウォレット情報 */}
-        <div style={styles.walletSection}>
-          <div style={styles.walletHeading}>WALLET</div>
-
-          {/* 管理ウォレット（環境変数・読み取り専用） */}
-          <div style={w.row}>
-            <div style={w.label}>管理ウォレット</div>
-            {adminWallet.address ? (
-              <div style={w.addrRow}>
-                <span style={w.addr}>{short(adminWallet.address)}</span>
-                <span style={w.envBadge}>ENV</span>
-              </div>
-            ) : (
-              <span style={w.unconfigured}>未設定</span>
-            )}
+        {/* 管理ウォレット情報（読み取り専用） */}
+        {adminAddress && (
+          <div style={styles.walletSection}>
+            <div style={styles.walletLabel}>管理ウォレット</div>
+            <div style={styles.walletAddr}>
+              {adminAddress.slice(0, 6)}…{adminAddress.slice(-4)}
+            </div>
           </div>
-
-          {/* ユーザーウォレット（MetaMask接続） */}
-          <div style={w.row}>
-            <div style={w.label}>ユーザーウォレット</div>
-            {user.address ? (
-              <div style={w.addrRow}>
-                <span style={w.addr}>{short(user.address)}</span>
-                <button style={w.disconnectBtn} onClick={disconnectUser}>切断</button>
-              </div>
-            ) : (
-              <div style={w.connectArea}>
-                {user.error && <span style={w.error}>{user.error}</span>}
-                <button
-                  style={{ ...w.connectBtn, opacity: user.loading ? 0.6 : 1 }}
-                  onClick={connectUser}
-                  disabled={user.loading}
-                >
-                  {user.loading ? '接続中…' : 'MetaMask で接続'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
 
         <div style={styles.sidebarFooter}>
           <Link href="/" style={styles.backLink}>← トレード画面へ</Link>
@@ -128,81 +91,28 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'background 0.15s',
   },
   walletSection: {
-    padding: '16px',
+    padding: '14px 20px',
     borderTop: '1px solid var(--admin-border)',
     borderBottom: '1px solid var(--admin-border)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 14,
   },
-  walletHeading: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 10,
-    fontWeight: 600,
-    color: 'var(--admin-text-secondary)',
-    letterSpacing: '0.08em',
-  },
-  sidebarFooter: { padding: '16px 20px' },
-  backLink: { fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--admin-text-secondary)', textDecoration: 'none' },
-  content: { flex: 1, padding: 32, overflowY: 'auto' },
-};
-
-const w: Record<string, React.CSSProperties> = {
-  row: { display: 'flex', flexDirection: 'column', gap: 5 },
-  label: {
+  walletLabel: {
     fontFamily: 'var(--font-sans)',
     fontSize: 10,
     fontWeight: 600,
     color: 'var(--admin-text-secondary)',
-    letterSpacing: '0.04em',
+    letterSpacing: '0.06em',
+    marginBottom: 6,
   },
-  addrRow: { display: 'flex', alignItems: 'center', gap: 6 },
-  addr: {
+  walletAddr: {
     fontFamily: 'var(--font-mono)',
     fontSize: 11,
     color: 'var(--admin-text-primary)',
     background: 'rgba(255,255,255,0.06)',
-    padding: '2px 6px',
+    padding: '3px 8px',
     borderRadius: 4,
+    display: 'inline-block',
   },
-  envBadge: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 9,
-    fontWeight: 700,
-    color: 'var(--admin-accent)',
-    letterSpacing: '0.06em',
-  },
-  unconfigured: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 11,
-    color: '#F87171',
-  },
-  connectArea: { display: 'flex', flexDirection: 'column', gap: 4 },
-  connectBtn: {
-    fontFamily: 'var(--font-sans)',
-    fontSize: 11,
-    fontWeight: 600,
-    color: 'var(--admin-accent)',
-    background: 'transparent',
-    border: '1px solid var(--admin-accent)',
-    borderRadius: 4,
-    padding: '5px 8px',
-    cursor: 'pointer',
-    width: '100%',
-  },
-  disconnectBtn: {
-    fontFamily: 'var(--font-sans)',
-    fontSize: 10,
-    color: 'var(--admin-text-secondary)',
-    background: 'transparent',
-    border: '1px solid var(--admin-border)',
-    borderRadius: 4,
-    padding: '2px 6px',
-    cursor: 'pointer',
-  },
-  error: {
-    fontFamily: 'var(--font-sans)',
-    fontSize: 10,
-    color: '#F87171',
-  },
+  sidebarFooter: { padding: '16px 20px' },
+  backLink: { fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--admin-text-secondary)', textDecoration: 'none' },
+  content: { flex: 1, padding: 32, overflowY: 'auto' },
 };
