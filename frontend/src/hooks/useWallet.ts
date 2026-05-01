@@ -1,18 +1,18 @@
 import { useWalletStore } from '@/store/walletStore';
 
-export interface WalletState {
-  address: string | null;
-  loading: boolean;
-  error: string | null;
-}
-
 export function useWallet() {
-  const { user, connectUser, disconnectUser } = useWalletStore();
+  const { user, connectUser, disconnectUser, autoConnect, fetchPolBalance, switchToAmoy } = useWalletStore();
   return {
-    address: user.address,
-    loading: user.loading,
-    error: user.error,
-    connect: connectUser,
-    disconnect: disconnectUser,
+    address:        user.address,
+    loading:        user.loading,
+    error:          user.error,
+    chainId:        user.chainId,
+    polBalance:     user.polBalance,
+    wrongNetwork:   user.wrongNetwork,
+    connect:        connectUser,
+    disconnect:     disconnectUser,
+    autoConnect,
+    refreshBalance: fetchPolBalance,
+    switchToAmoy,
   };
 }

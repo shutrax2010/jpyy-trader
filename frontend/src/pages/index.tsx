@@ -1,8 +1,6 @@
 import Head from 'next/head';
-import { useEffect, useRef } from 'react';
 import { usePolling } from '@/hooks/usePolling';
 import { useAgent } from '@/hooks/useAgent';
-import { useWallet } from '@/hooks/useWallet';
 import { useTradingStore } from '@/store/tradingStore';
 import Header from '@/components/Header';
 import AgentControlPanel from '@/components/AgentControlPanel';
@@ -15,31 +13,9 @@ import WalletConnectionScreen from '@/components/WalletConnectionScreen';
 import type { AgentMode } from '@/types';
 
 export default function TradeDashboard() {
-  const wallet = useWallet();
   const { refetch } = usePolling();
   const agent = useAgent();
   const { state, isLoading } = useTradingStore();
-
-  // ウォレット接続/切断をバックエンドに通知
-  const prevAddress = useRef<string | null>(null);
-  useEffect(() => {
-    if (wallet.address && wallet.address !== prevAddress.current) {
-      agent.connect(wallet.address).catch(() => {/* 接続通知失敗は無視 */});
-    } else if (!wallet.address && prevAddress.current) {
-      agent.disconnect().catch(() => {});
-    }
-    prevAddress.current = wallet.address;
-  }, [wallet.address]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!wallet.address) {
-    return (
-      <WalletConnectionScreen
-        loading={wallet.loading}
-        error={wallet.error}
-        onConnect={wallet.connect}
-      />
-    );
-  }
 
   if (isLoading || !state) {
     return (
@@ -47,6 +23,10 @@ export default function TradeDashboard() {
         <span style={styles.loadingText}>読み込み中…</span>
       </div>
     );
+  }
+
+  if (!state.agent.address) {
+    return <WalletConnectionScreen />;
   }
 
   async function handleStart() {
@@ -74,8 +54,7 @@ export default function TradeDashboard() {
         <Header
           running={state.agent.running}
           mode={state.agent.mode}
-          walletAddress={wallet.address}
-          onDisconnect={wallet.disconnect}
+          agentAddress={state.agent.address}
         />
 
         <main style={styles.main}>
@@ -93,7 +72,7 @@ export default function TradeDashboard() {
               onConfigChange={handleConfigChange}
             />
             <HoldingsPanel
-              address={wallet.address}
+              address={state.agent.address}
               balances={state.balances}
               pool={state.pool}
               onRefresh={refetch}

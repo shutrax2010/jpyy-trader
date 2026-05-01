@@ -8,6 +8,7 @@ const NAV = [
   { href: '/admin/amm', label: 'AMM管理' },
   { href: '/admin/price', label: 'YTT価格設定' },
   { href: '/admin/log', label: '操作ログ' },
+  { href: '/admin/agent', label: 'エージェント設定' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

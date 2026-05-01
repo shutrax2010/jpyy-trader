@@ -1,0 +1,10 @@
+[
+  "function getReserves() view returns (uint256 _jpyy, uint256 _ytt)",
+  "function getYttPrice() view returns (uint256)",
+  "function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) pure returns (uint256)",
+  "function swapJpyyForYtt(uint256 jpyyIn, uint256 minYttOut)",
+  "function swapYttForJpyy(uint256 yttIn, uint256 minJpyyOut)",
+  "function addLiquidity(uint256 jpyyAmount, uint256 yttAmount)",
+  "function setReserves(uint256 _jpyyReserve, uint256 _yttReserve)",
+  "event Swap(address indexed sender, address tokenIn, uint256 amountIn, uint256 amountOut, uint256 newJpyyReserve, uint256 newYttReserve)"
+]

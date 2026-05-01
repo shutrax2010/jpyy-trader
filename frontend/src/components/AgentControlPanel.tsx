@@ -21,8 +21,13 @@ export default function AgentControlPanel({
   const [localInterval, setLocalInterval] = useState(interval);
   const [localAmount, setLocalAmount] = useState(String(tradeAmount));
   const [amountError, setAmountError] = useState('');
+  const [toggleError, setToggleError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const accentColor = localMode === 'aggressive' ? 'var(--color-aggressive)' : 'var(--color-conservative)';
+  const accentColor =
+    localMode === 'aggressive'   ? 'var(--color-aggressive)' :
+    localMode === 'conservative' ? 'var(--color-conservative)' :
+    'var(--color-yellow-dark)';
 
   function validateAmount(value: string): string {
     const n = Number(value);
@@ -37,11 +42,18 @@ export default function AgentControlPanel({
     setAmountError(validateAmount(value));
   }
 
-  function handleToggle() {
+  async function handleToggle() {
     const err = validateAmount(localAmount);
     if (err) { setAmountError(err); return; }
-    onConfigChange(localMode, localInterval, Number(localAmount));
-    running ? onStop() : onStart();
+    setBusy(true); setToggleError('');
+    try {
+      await onConfigChange(localMode, localInterval, Number(localAmount));
+      running ? await onStop() : await onStart();
+    } catch (e) {
+      setToggleError(e instanceof Error ? e.message : '操作に失敗しました');
+    } finally {
+      setBusy(false);
+    }
   }
 
   const action = lastDecision?.action ?? 'HOLD';
@@ -68,7 +80,7 @@ export default function AgentControlPanel({
       <div style={styles.field}>
         <label style={styles.label}>AIモード</label>
         <div style={styles.toggle}>
-          {(['aggressive', 'conservative'] as AgentMode[]).map((m) => (
+          {(['aggressive', 'conservative', 'random'] as AgentMode[]).map((m) => (
             <button
               key={m}
               style={{
@@ -78,7 +90,7 @@ export default function AgentControlPanel({
               }}
               onClick={() => setLocalMode(m)}
             >
-              {m === 'aggressive' ? '積極モード' : '慎重モード'}
+              {m === 'aggressive' ? '積極' : m === 'conservative' ? '慎重' : 'ランダム'}
             </button>
           ))}
         </div>
@@ -111,16 +123,19 @@ export default function AgentControlPanel({
         {amountError && <p style={styles.error}>{amountError}</p>}
       </div>
 
+      {toggleError && <p style={styles.error}>{toggleError}</p>}
       <button
         style={{
           ...styles.startStopBtn,
           background: running ? 'var(--color-sell-bg)' : accentColor,
           color: running ? 'var(--color-sell)' : '#fff',
           border: running ? `1px solid var(--color-sell)` : 'none',
+          opacity: busy ? 0.6 : 1,
         }}
         onClick={handleToggle}
+        disabled={busy}
       >
-        {running ? '■ ストップ' : '▶ スタート'}
+        {busy ? '処理中…' : running ? '■ ストップ' : '▶ スタート'}
       </button>
     </div>
   );

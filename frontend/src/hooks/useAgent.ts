@@ -11,10 +11,13 @@ export function useAgent() {
   async function post(path: string, body?: object) {
     const res = await fetch(buildPath(path), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: body ? { 'Content-Type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
+    }
   }
 
   async function patch(path: string, body: object) {

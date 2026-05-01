@@ -1,4 +1,4 @@
-export type AgentMode = 'aggressive' | 'conservative';
+export type AgentMode = 'aggressive' | 'conservative' | 'random';
 export type TradeAction = 'BUY' | 'SELL' | 'HOLD';
 
 export interface PricePoint {

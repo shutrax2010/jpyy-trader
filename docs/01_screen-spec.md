@@ -1,6 +1,6 @@
 # AIトークン売買デモアプリ 画面仕様書
 
-**バージョン**: 1.5
+**バージョン**: 1.7
 **対象ネットワーク**: Polygon Amoy Testnet
 **トークン**: JPYY（基本通貨、1JPYY=1円） / YTT
 **フロントエンド**: NEXT JS + ポーリング（5秒間隔）
@@ -17,6 +17,8 @@
 | 1.3 | 2026-04-29 | QuickSwap廃止、取引量テキスト入力化、MATICラベル→POL、管理画面追加 |
 | 1.4 | 2026-04-29 | ウォレット2本化（管理者・エージェント）に合わせて全画面を更新 |
 | 1.5 | 2026-04-29 | WebSocket廃止→ポーリング（GET /api/state 5秒間隔）に変更 |
+| 1.6 | 2026-04-30 | ウォレット接続方式を実装に合わせて更新 |
+| 1.7 | 2026-05-01 | エージェントウォレット方式をOption A（管理画面でインメモリ秘密鍵設定）に変更。トレードダッシュボードのMetaMask接続を廃止し、APIポーリングのみに統一。管理画面に「エージェント設定」ページを追加。 |
 
 ---
 
@@ -24,10 +26,10 @@
 
 | ウォレット | 用途 | フロントエンドでの扱い |
 |-----------|------|----------------------|
-| **管理者ウォレット** | コントラクトowner・JPYY発行配布・AMM操作 | 管理画面でMetaMask接続 |
-| **エージェントウォレット** | AI自律売買・JPYY/YTT残高保有 | アドレスのみ環境変数で受け取り、残高を読み取り表示 |
+| **管理者ウォレット** | コントラクトowner・JPYY発行配布・AMM操作 | バックエンドの `ADMIN_PRIVATE_KEY` で署名。フロントエンドでは `NEXT_PUBLIC_ADMIN_ADDRESS` をサイドバーに表示するのみ。 |
+| **エージェントウォレット** | AI自律売買・JPYY/YTT残高保有・スワップ署名 | 管理画面の「エージェント設定」から秘密鍵を入力→バックエンドがメモリに保持。MetaMask不要。 |
 
-> ユーザーウォレット接続（MetaMask）は不要。トレード画面はエージェントの動作を閲覧するダッシュボード。
+> **秘密鍵の保持方針（Option A）**: バックエンドのプロセスメモリのみ。ディスク（`.env`含む）には書き込まない。サーバー再起動で失効する。ローカル・テストネット専用の設計。
 
 ---
 
@@ -46,17 +48,12 @@
 | テキスト（ヒント） | `#B8B6A8` | ライトグレー |
 | アクセント（メイン） | `#F5C800` | サンイエロー |
 | アクセント（濃） | `#C9A000` | ダークゴールド |
-| アクセント（薄） | `#FFF3A8` | ペールイエロー |
 | Buy | `#1A9E6A` | エメラルドグリーン |
-| Buy 背景 | `#E8F8F2` | ペールグリーン |
 | Sell | `#D94040` | クリムゾン |
-| Sell 背景 | `#FAEAEA` | ペールレッド |
 | Hold | `#8A8878` | ニュートラルグレー |
-| Hold 背景 | `#F0EFE8` | ペールグレー |
 | 積極モード | `#E85D24` | オレンジ |
 | 慎重モード | `#3B7DD8` | ブルー |
 | 管理画面背景 | `#1A1A14` | チャコール |
-| 管理画面カード | `#242420` | ダークカード |
 | 管理アクセント | `#9B7BE8` | パープル |
 
 ---
@@ -65,8 +62,8 @@
 
 | 画面名 | URL | 対象 |
 |--------|-----|------|
-| トレードダッシュボード | `/` | エージェントウォレット接続者 |
-| 管理ダッシュボード | `/admin` | デモ担当者（管理者ウォレット） |
+| トレードダッシュボード | `/` | エージェントウォレット設定後に閲覧可能 |
+| 管理ダッシュボード | `/admin` | デモ担当者 |
 
 ---
 
@@ -74,32 +71,26 @@
 
 ### 4.1 レイアウト
 
-トレード画面を開くと、最初にウォレット接続画面を表示する。
+トレード画面はウォレット接続なしで直接アクセスできる。エージェントウォレットの設定状態は `GET /api/state` ポーリングから取得して表示する。
+
+**エージェント未設定時の表示**:
 
 ```
 ┌──────────────────────────────────────────┐
 │  JPYY●TRADER                             │
 │                                          │
-│  エージェントウォレットを接続してください  │
+│  ⚠ エージェントウォレット未設定            │
+│                                          │
+│  管理画面 → エージェント設定 から          │
+│  秘密鍵を設定してください。                │
 │                                          │
 │  ┌────────────────────────────────────┐  │
-│  │  🦊 MetaMask で接続               │  │
+│  │  管理画面を開く →                  │  │
 │  └────────────────────────────────────┘  │
-│                                          │
-│  接続したウォレットが AIエージェントとして  │
-│  JPYY/YTT の売買を行います。             │
-│                                          │
-│  ・Polygon Amoy Testnet に切り替えが必要  │
-│  ・JPYY残高が必要です（管理者から配布）   │
 └──────────────────────────────────────────┘
 ```
 
-**接続フローの詳細**:
-
-1. ユーザーが「MetaMask で接続」ボタンを押す
-2. MetaMask が起動し、アカウント選択・承認を求める
-3. ネットワークが Amoy Testnet でない場合、自動で切替を要求する
-4. 接続完了 → アドレスをバックエンドに登録 → ダッシュボードを表示する
+**エージェント設定済み時**: 通常のダッシュボードを表示する。
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -122,29 +113,27 @@
 └──────────────┴──────────────────────────────────────────┘
 ```
 
-- エージェントウォレットのアドレスと残高は環境変数 `NEXT_PUBLIC_AGENT_ADDRESS` から取得して表示
-
 ### 4.2 ヘッダー
 
-| 要素 | 内容 | スタイル |
-|------|------|---------|
+| 要素 | 内容 | 備考 |
+|------|------|------|
 | ロゴ | `JPYY●TRADER` | `DM Sans` 18px weight 600、●=`#F5C800` |
 | エージェント状態 | `● RUNNING` / `● STOPPED` | 緑/グレー点、`DM Mono` 11px |
-| AIモードバッジ | `積極モード` / `慎重モード` | オレンジ/ブルーバッジ |
-| ネットワーク | `AMOY TESTNET` | `#FFFBE6`背景、`#C9A000`テキスト |
-| 管理画面リンク | `管理 →` | 右端テキストリンク、`/admin`へ |
-
+| AIモードバッジ | `積極モード` / `慎重モード` / `ランダム` | 各色バッジ |
+| ネットワーク | `AMOY TESTNET` バッジ（固定表示） | MetaMask不要のため静的 |
+| エージェントアドレス | `0x1234…5678`（`agent.address` から表示） | 右端 |
+| 管理画面リンク | `管理 →`（`/admin`） | 右端 |
 
 ### 4.3 左カラム — AIエージェント制御パネル
 
 **カード背景**: `#FFFBE6`
-**上部アクセントライン**: 積極=`3px solid #E85D24` / 慎重=`3px solid #3B7DD8`
+**上部アクセントライン**: 積極=`3px solid #E85D24` / 慎重=`3px solid #3B7DD8` / ランダム=`3px solid #C9A000`
 
 | 要素 | 仕様 |
 |------|------|
 | 現在の判断バッジ | `BUY YTT` / `SELL YTT` / `HOLD` |
 | 判断理由 | Claudeが返したテキスト、3行まで |
-| AIモード切替 | `積極モード` / `慎重モード` 2択トグル |
+| AIモード切替 | `積極モード` / `慎重モード` / `ランダム` 3択トグル |
 | 実行間隔 | スライダー（30〜300秒） |
 | 取引量 | テキストボックス（`¥` プレフィックス、数値入力） |
 | スタート/ストップ | フル幅トグルボタン |
@@ -156,17 +145,12 @@
 
 ### 4.4 左カラム — エージェント残高パネル（HOLDINGS）
 
-**カード背景**: `#FFFFFF`
-
-旧「ウォレット接続後に表示」→ **常時表示**（読み取り専用）
-
 ```
 HOLDINGS（エージェント）              [↻]
 ─────────────────────────────────────
-アドレス   0x1A2B...9fCd
-           （接続中 · Amoy Testnet）
+アドレス   0x1A2B...9fCd  → Polygonscan リンク
 ─────────────────────────────────────
-POL        0.9842
+POL        0.9842          ← balances.pol（APIから）
 ─────────────────────────────────────
 JPYY       ¥ 12,400
            ≈ 12,400 円
@@ -177,18 +161,11 @@ YTT        120.00 YTT
 合計資産   ≈ ¥ 26,800
 ```
 
-| 要素 | スタイル |
-|------|---------|
-| アドレス | `DM Mono` 12px、副テキスト色、MetaMask 接続中のアドレスを表示、クリックで Polygonscan へ |
-| POL残高 | `DM Mono` 15px |
-| JPYY残高 | `¥` プレフィックス + `DM Mono` 22px weight 600 |
-| YTT残高 | `DM Mono` 22px weight 600 + ¥換算を副表示 |
-| 合計資産 | `DM Mono` 15px weight 600 |
-| 更新ボタン | 右上、ポーリングとは別に手動リフレッシュ可 |
+全残高は `GET /api/state` の `balances` から取得（MetaMask不要）。
 
-### 4.5 右カラム（変更なし）
+### 4.5 右カラム
 
-- 価格チャート（YTT/JPYY、¥建て）
+- 価格チャート（YTT/JPYY、¥建て、recharts折れ線）
 - AMMプール状態パネル
 - AI判断パネル（モードバッジ付き）
 - トランザクション履歴（方向: `JPYY→YTT` / `YTT→JPYY`）
@@ -199,52 +176,63 @@ YTT        120.00 YTT
 
 ### 5.1 接続方式
 
-管理画面は **MetaMask 接続不要**。管理操作はすべてバックエンドが `.env` のアドレスを使って署名・送信する。
+MetaMask 接続不要。管理操作はすべてバックエンドが `ADMIN_PRIVATE_KEY` を使って署名・送信する。
 
-**アクセス制御**:
-- MetaMask 接続は不要
-- 誤操作防止のため、全操作に確認ダイアログを表示する
-- 本番運用時はベーシック認証などを追加することを推奨（デモでは不要）
+**アクセス制御**: 現在は制限なし（デモ用途）。本番運用時はベーシック認証等を追加推奨。
 
 ### 5.2 サイドバーメニュー
 
 | メニュー | 内容 |
 |---------|------|
 | 概要 | 全体サマリー |
+| エージェント設定 | エージェントウォレット秘密鍵の設定・クリア |
 | JPYY管理 | mint・エージェントへの配布 |
 | AMM管理 | 流動性追加・価格リバランス |
 | YTT価格設定 | setReservesで価格直接変更 |
 | 操作ログ | 全管理操作の履歴 |
 
-### 5.3 JPYY管理ページ（変更点）
+### 5.3 エージェント設定ページ
 
-**発行先の選択肢を整理**:
+```
+エージェントウォレット設定
+────────────────────────────────────────
+現在の状態
+  🟢 設定済み — 0x1A2B...9fCd
+  🔴 未設定
 
-旧: 「管理者ウォレット」/「カスタムアドレス」
-新: 「エージェントウォレット（自動入力）」/「カスタムアドレス」
+────────────────────────────────────────
+秘密鍵 (0x...)  [type="password"]
+  ↓ 入力後にアドレスをプレビュー（ethers.jsでフロント側が導出）
+  設定先アドレス: 0x1A2B...9fCd
+
+  [ この秘密鍵をエージェントに設定 ]  → POST /admin/agent-key
+  [ クリア ]                          → DELETE /admin/agent-key
+
+⚠ 秘密鍵はサーバーのメモリにのみ保持。再起動で失効。
+```
+
+| 操作 | 処理 |
+|------|------|
+| 秘密鍵を入力 | フロントエンドが `new ethers.Wallet(key)` でアドレスをプレビュー表示 |
+| 「設定する」クリック | `POST /admin/agent-key { privateKey }` を送信。成功時はアドレスを表示 |
+| 「クリア」クリック | `DELETE /admin/agent-key` を送信。稼働中の場合は400エラーを表示 |
+
+### 5.4 JPYY管理ページ
 
 ```
 JPYY 新規発行（mint）
 ────────────────────────────────────
-発行量     ¥ [__________]
-発行先     [エージェントウォレット ▼]
-           0x1A2B...9fCd（自動入力）
+発行先（エージェントウォレット）
+  0x1A2B...9fCd  ← GET /api/state の agent.address を自動表示
 
-現在の総発行量: ¥ 1,000,000
-発行後:         ¥ 1,050,000 (+5.0%)
+発行量     ¥ [__________]
 
 [  発行する（mint）  ]
+
+✓ 発行完了  0xabc123...def456 ↗  ← Polyscan リンク
 ```
 
-**配布パネルの変更**:
-
-旧: 「配布先アドレスを複数指定」
-新: エージェントウォレットへの配布を主目的とし、カスタムアドレス入力は補助機能として残す
-
-### 5.4 概要ページのサマリーカード（変更点）
-
-旧: 「配布済みウォレット一覧」
-新: 「エージェント残高」カードに変更
+### 5.5 概要ページのサマリーカード
 
 ```
 ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
@@ -258,210 +246,157 @@ JPYY 新規発行（mint）
 
 ## 6. ポーリング API（GET /api/state）
 
-WebSocket は使用しない。フロントエンドは **5 秒ごとに `GET /api/state`** を呼び出して全画面を更新する。
+フロントエンドは **5 秒ごとに `GET /api/state`** を呼び出して全画面を更新する（WebSocket不使用）。
 
-### レスポンス構造
+### レスポンスフィールド
 
-```typescript
-{
-  agent: {
-    running:   boolean;          // エージェント稼働状態
-    mode:      'aggressive' | 'conservative';
-    interval:  number;           // 実行間隔（秒）
-    nextRunIn: number;           // 次回実行までの秒数（バックエンドで計算）
-    tradeAmount: number;         // 取引量（JPYY）
-  };
-  balances: {
-    pol:  number;                // エージェントのPOL残高
-    jpyy: number;                // エージェントのJPYY残高
-    ytt:  number;                // エージェントのYTT残高
-  };
-  pool: {
-    jpyyReserve: number;
-    yttReserve:  number;
-    price:       number;         // YTT現在価格（¥/YTT）
-  };
-  priceHistory:  PricePoint[];   // 最新20件（古い順）
-  lastDecision:  Decision | null;
-  txHistory:     TxResult[];     // 最新20件（新しい順）
-  lastError:     string | null;  // 直近エラー（なければ null）
-}
-```
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `agent.address` | `string` | エージェントウォレットアドレス（未設定時は空文字） |
+| `agent.running` | `boolean` | エージェント稼働状態 |
+| `agent.mode` | `'aggressive' \| 'conservative' \| 'random'` | AIモード |
+| `agent.interval` | `number` | 実行間隔（秒） |
+| `agent.nextRunIn` | `number` | 次回実行までの秒数 |
+| `agent.tradeAmount` | `number` | 取引量（JPYY） |
+| `balances.pol` | `number` | エージェントのPOL残高 |
+| `balances.jpyy` | `number` | エージェントのJPYY残高 |
+| `balances.ytt` | `number` | エージェントのYTT残高 |
+| `pool.jpyyReserve` | `number` | AMMプールJPYY残高 |
+| `pool.yttReserve` | `number` | AMMプールYTT残高 |
+| `pool.price` | `number` | YTT現在価格（¥/YTT） |
+| `priceHistory` | `PricePoint[]` | 最新20件の価格履歴（古い順） |
+| `lastDecision` | `Decision \| null` | 最新のAI判断 |
+| `txHistory` | `TxResult[]` | 最新20件のトランザクション |
+| `lastError` | `string \| null` | 直近エラー |
 
-### ポーリング間隔の根拠
+### エージェントウォレットの設定・クリア
 
-エージェントの最短実行間隔は 30 秒のため、5 秒ポーリングで十分なリアルタイム性を確保できる。
+| エンドポイント | リクエスト | レスポンス |
+|--------------|-----------|-----------|
+| `POST /admin/agent-key` | `{ "privateKey": "0x..." }` | `{ "ok": true, "address": "0x..." }` |
+| `DELETE /admin/agent-key` | なし | `{ "ok": true }` |
 
-### エージェントウォレットの登録・解除
-
-```typescript
-// POST /agent/connect
-// フロントエンドがMetaMask接続後にアドレスを通知
-{ "address": "0x1A2B...9fCd" }
-
-// POST /agent/disconnect
-// MetaMask切断時・画面離脱時に通知
-{}
-```
+稼働中は両エンドポイントとも `400` を返す。
 
 ### トランザクション署名フロー（エージェント）
 
-エージェントのTX署名はフロントエンドの MetaMask を経由する。
-
 ```
-バックエンド               フロントエンド（MetaMask）
-    │                           │
-    │ ← POST /agent/swap ──────│  AIがBUYを判断
-    │                           │
-    │   TX データを構築          │
-    │ ─ 署名リクエスト ────────→│
-    │                           │  MetaMaskがポップアップ
-    │                           │  （ユーザーが確認・承認）
-    │ ← 署名済みTX ────────────│
-    │                           │
-    │   Polygon Amoyに送信      │
-    │ ─ tx_submitted ─────────→│  WebSocketで配信
-    │ ─ tx_confirmed ─────────→│  確定後に配信
+バックエンド（AgentLoop）
+    │  AIがBUY/SELLを判断
+    ├─ _ensureAgentApproval() ─→ JPYY/YTT のallowance確認・必要なら approve
+    ├─ ContractClient.swap*() ─→ in-memoryのagentSignerで署名・送信
+    └─ syncFromChain()        ─→ 残高・プール状態を更新
 ```
-
-> MetaMask のポップアップが毎回表示されると UX が悪いため、`eth_signTransaction` を使ってバックエンドが送信する構成を基本とする。フロントエンドは接続時に「自動署名を許可しますか？」の確認を取る。
-
-### WebSocket イベント（変更点）
-
-`agent_info` イベントを `wallet_connected` / `wallet_disconnected` に変更する。
-
-| イベント名 | ペイロード | 用途 |
-|-----------|-----------|------|
-| `wallet_connected` | `{ address, network }` | 接続完了をフロントに通知 |
-| `wallet_disconnected` | `{}` | 切断時にフロントのUI更新 |
-| その他 | v1.4 と同じ | 変更なし |
 
 ---
 
 ## 7. 環境変数
 
-### バックエンド（`.env`）
+### バックエンド（`backend/.env`）
 
 ```env
-# Anthropic
 ANTHROPIC_API_KEY=sk-ant-...
-
-# Polygon Amoy
 RPC_URL=https://rpc-amoy.polygon.technology
 CHAIN_ID=80002
-
-# 管理者ウォレット（.envで管理・MetaMask不要）
 ADMIN_PRIVATE_KEY=0x...
-
-# エージェントウォレット（秘密鍵はここに書かない）
-# → フロントエンドのMetaMask接続で取得する
-
-# コントラクト
 JPYY_ADDRESS=0x...
 YTT_ADDRESS=0x...
 AMM_ADDRESS=0x...
-
-# エージェント設定
-AGENT_AUTO_START=false        # 接続後に手動でSTARTするためfalse推奨
 DEFAULT_INTERVAL=60
 DEFAULT_AMOUNT=1000
 DEFAULT_MODE=aggressive
-
 PORT=3001
 ```
 
-### フロントエンド（`.env.local`）
+> `ADMIN_PRIVATE_KEY` または `AMM_ADDRESS` が未設定の場合、バックエンドはダミーモード（オンメモリ擬似実装）で動作する。
+
+### フロントエンド（`frontend/.env.local`）
 
 ```env
-# コントラクトアドレス
-NEXT_PUBLIC_JPYY_ADDRESS=0x...
-NEXT_PUBLIC_YTT_ADDRESS=0x...
-NEXT_PUBLIC_AMM_ADDRESS=0x...
-
-# RPC（読み取り用）
-NEXT_PUBLIC_RPC_URL=https://rpc-amoy.polygon.technology
-
-# バックエンドURL
 NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_ADMIN_ADDRESS=0x...
 ```
 
 ---
 
-## 8. コンポーネント構成（React）
+## 8. コンポーネント構成
 
 ```
 src/
 ├── pages/
-│   ├── TradeDashboard.tsx
-│   └── admin/
-│       ├── AdminLayout.tsx
-│       ├── AdminOverview.tsx
-│       ├── AdminJpyy.tsx          # 発行先をエージェントアドレスに変更
-│       ├── AdminAmm.tsx
-│       ├── AdminYttPrice.tsx
-│       └── AdminLog.tsx
+│   ├── index.tsx                # トレードダッシュボード（エージェント未設定時は案内画面）
+│   ├── api/                     # モックAPIフォールバック（NEXT_PUBLIC_API_URL未設定時に使用）
+│   └── admin/                   # 管理画面（5ページ）
 ├── components/
-│   ├── WalletConnectScreen.tsx    # 新規: 起動時のMetaMask接続画面
-│   ├── Header.tsx                 # 接続アドレス表示・切断ボタン追加
-│   ├── AgentControlPanel.tsx      # 未接続時にSTARTを無効化
-│   ├── HoldingsPanel.tsx          # 接続ウォレットの残高を表示
-│   ├── PriceChart.tsx
-│   ├── PoolStatusPanel.tsx
-│   ├── AIDecisionPanel.tsx
-│   ├── TxHistoryTable.tsx
+│   ├── WalletConnectionScreen.tsx  # エージェント未設定時の案内画面
+│   ├── Header.tsx                  # ロゴ・状態・ネットワークバッジ
+│   ├── AgentControlPanel.tsx       # エージェント制御（3モードトグル）
+│   ├── HoldingsPanel.tsx           # 残高（すべてAPIから取得）
+│   ├── PriceChart.tsx              # recharts 折れ線グラフ
+│   ├── PoolStatusPanel.tsx         # AMMプール状態
+│   ├── AIDecisionPanel.tsx         # AI最新判断
+│   ├── TxHistoryTable.tsx          # TX履歴
 │   └── admin/
-│       ├── AdminWalletGuard.tsx
-│       ├── JpyyMintPanel.tsx      # 発行先をエージェント優先に変更
-│       ├── AmmLiquidityPanel.tsx
-│       ├── PriceRebalancePanel.tsx
-│       └── AiSimulator.tsx
+│       ├── AdminLayout.tsx         # サイドバー付きレイアウト
+│       ├── AdminAgentKey.tsx       # エージェント秘密鍵設定フォーム
+│       ├── AdminJpyy.tsx           # JPYY発行（Polyscanリンク付き）
+│       ├── AdminAmm.tsx            # 流動性追加
+│       ├── AdminYttPrice.tsx       # 価格設定
+│       └── AdminLog.tsx            # 操作ログ
 ├── hooks/
-│   ├── usePolling.ts              # GET /api/state の5秒ポーリング
-│   ├── useAdminWallet.ts               # wagmi useAccount / useConnect
-│   └── useAgent.ts
+│   ├── usePolling.ts              # 5秒ごとに GET /api/state → Zustand更新
+│   ├── useAgent.ts                # エージェント制御API
+│   └── useAdmin.ts                # 管理API（agent-key含む）
 ├── store/
-│   └── tradingStore.ts
+│   └── tradingStore.ts            # Zustand
 └── styles/
-│   └── tokens.css
-└── App.tsx                        # 未接続時は WalletConnectScreen を表示
+    └── tokens.css                 # CSSカスタムプロパティ（デザイントークン）
 ```
 
 ---
 
-## 9. CSS デザイントークン（v1.3から変更なし）
+## 9. CSS デザイントークン（`styles/tokens.css`）
 
 ```css
 :root {
+  /* 背景 */
   --color-bg-page:        #FAFAF7;
   --color-bg-card:        #FFFFFF;
   --color-bg-accent:      #FFFBE6;
   --color-border:         #E8E6DC;
+
+  /* テキスト */
   --color-text-primary:   #1A1A14;
   --color-text-secondary: #8A8878;
   --color-text-hint:      #B8B6A8;
+
+  /* アクセント */
   --color-yellow:         #F5C800;
   --color-yellow-dark:    #C9A000;
-  --color-yellow-light:   #FFF3A8;
-  --color-buy:            #1A9E6A;
-  --color-buy-bg:         #E8F8F2;
-  --color-sell:           #D94040;
-  --color-sell-bg:        #FAEAEA;
-  --color-hold:           #8A8878;
-  --color-hold-bg:        #F0EFE8;
-  --color-aggressive:     #E85D24;
-  --color-aggressive-bg:  #FEF0E8;
-  --color-conservative:   #3B7DD8;
-  --color-conservative-bg:#E8F0FE;
+
+  /* BUY / SELL / HOLD */
+  --color-buy:            #1A9E6A;  --color-buy-bg:  #E8F8F2;
+  --color-sell:           #D94040;  --color-sell-bg: #FAEAEA;
+  --color-hold:           #8A8878;  --color-hold-bg: #F0EFE8;
+
+  /* モード */
+  --color-aggressive:     #E85D24;  --color-aggressive-bg:  #FEF0E8;
+  --color-conservative:   #3B7DD8;  --color-conservative-bg:#E8F0FE;
+
+  /* 管理画面（ダーク） */
   --admin-bg-page:        #1A1A14;
   --admin-bg-sidebar:     #111108;
   --admin-bg-card:        #242420;
   --admin-border:         #3A3A34;
   --admin-text-primary:   #E8E6DC;
   --admin-accent:         #9B7BE8;
+
+  /* タイポグラフィ */
   --font-sans:    'DM Sans', sans-serif;
   --font-mono:    'DM Mono', monospace;
+
+  /* スペーシング */
   --space-card:   24px;
-  --space-inner:  20px;
   --radius-card:  12px;
   --shadow-card:  0 2px 12px rgba(26,26,20,0.06);
 }
@@ -469,4 +404,4 @@ src/
 
 ---
 
-*最終更新: 2026-04-29（v1.5 WebSocket廃止）*
+*最終更新: 2026-05-01（v1.7）*
