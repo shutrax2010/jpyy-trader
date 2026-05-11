@@ -10,6 +10,7 @@ export interface Decision {
   action: TradeAction;
   reason: string;
   confidence: number;
+  insight?: string;
   ts: string;
 }
 

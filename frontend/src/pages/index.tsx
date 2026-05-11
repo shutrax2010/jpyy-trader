@@ -9,6 +9,7 @@ import PriceChart from '@/components/PriceChart';
 import PoolStatusPanel from '@/components/PoolStatusPanel';
 import AIDecisionPanel from '@/components/AIDecisionPanel';
 import TxHistoryTable from '@/components/TxHistoryTable';
+import AIInsightPanel from '@/components/AIInsightPanel';
 import WalletConnectionScreen from '@/components/WalletConnectionScreen';
 import type { AgentMode } from '@/types';
 
@@ -98,6 +99,8 @@ export default function TradeDashboard() {
                 nextRunIn={state.agent.nextRunIn}
               />
             </div>
+
+            <AIInsightPanel decision={state.lastDecision} />
 
             <TxHistoryTable txHistory={state.txHistory} />
           </div>
